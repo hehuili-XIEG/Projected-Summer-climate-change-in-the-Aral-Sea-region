@@ -1,0 +1,567 @@
+#!/bin/bash
+#PBS
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=1:mpiprocs=1
+#PBS -joe -o /home/cuifengqi/ALARO-1-SURFEX-8/PGD/log.2.clim.pbs
+#PBS -N PGD
+
+# or launch an interactive job with
+#
+# 	qsub -I -lselect=1:ncpus=1:mpiprocs=1 -N PGD -lwalltime=02:00:00
+#
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#   Building of the climatological files for a LAM model.
+#
+#   Orography (part 1) is always quadratic.
+#   The other fields are linear.
+#
+#   Orography and land/sea mask are taken from a PGD file.
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#   Example here with the aladin France model grid.
+#   To adapt it to your own grid, change NAMDIM and NEMGEO
+#   geometry blocks only.
+#   And NAMCLA for your orography characteristics !
+#   And put the right PGD file address.
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#source /home/cuifengqi/ALARO-1-SURFEX-8/PGD/ENV_ALADIN
+
+BASEDIR=/home/hamdi/ALARO-1-SURFEX-8/PGD/CLIM
+source ${BASEDIR}/ENV_ALADIN
+
+WORKDIR=/scratch-a/heheuili/CLIM/step3
+rm ${WORKDIR}/*
+
+OUTDIR=/scratch-a/heheuili/CLIM/CLIMFILE
+DATADIR=/home/daand/aladin/const/
+
+cd ${WORKDIR}
+
+
+echo '  -- E923 - with PGD -- model grid -- '
+echo '      '
+
+#      ***************
+#      *  NAMELISTS  *
+#      ***************
+
+cat << FIN > nam923
+ &NAEAEM7
+ /
+ &NAEPHLI
+ /
+ &NAEPHY
+ /
+ &NAERAD
+   LSRTM=.FALSE.,
+ /
+ &NAEVOL
+ /
+ &NAMAFN
+ /
+ &NAMARG
+   NCONF=923,
+   LECMWF=.FALSE.,
+   LELAM=.TRUE.,
+   NSUPERSEDE=0,
+   CNMEXP='CLIM',
+ /
+ &NAMARPHY
+ /
+ &NAMCA
+ /
+ &NAMCAPE
+ /
+ &NAMCFU
+ /
+ &NAMCHEM
+ /
+ &NAMCHET
+ /
+ &NAMCHK
+ /
+ &NAMCLA
+   FENVN=0.,
+   LKEYF=.TRUE.,
+   LNEWORO=.TRUE.,
+   LNEWORO2=.FALSE.,
+   LNORO=.TRUE.,
+   LNLSM=.TRUE.,
+   NLISSP=1,
+   NLISSZ=1,
+ /
+ &NAMCLDP
+ /
+ &NAMCLI
+   LZ0THER=.FALSE.,
+ /
+ &NAMCOM
+ /
+ &NAMCOSJO
+ /
+ &NAMCT0
+   LRPLANE=.TRUE.,
+ /
+ &NAMCUMF
+ /
+ &NAMCUMFS
+ /
+ &NAMCVER
+ /
+ &NAMDDH
+ /
+ &NAMDIM
+   NDGLG=216,
+   NDGUXG=200,
+   NDLON=216,
+   NDLUXG=200,
+   NFLEVG=1,
+   NMSMAX=107,
+   NSMAX=107,
+ /
+ &NAMDIM_TRAJ
+ /
+ &NAMDPHY
+ /
+ &NAMDYN
+ /
+ &NAMDYNA
+ /
+ &NAMDYNCORE
+ /
+ &NAMENKF
+ /
+ &NAMFA
+ /
+ &NAMFPC
+ /
+ &NAMFPD
+ /
+ &NAMFPSC2
+ /
+ &NAMGEM
+   NHTYP=0,
+   NSTTYP=1,
+   RMUCEN=1.,
+   RLOCEN=0.,
+   RSTRET=1.,
+ /
+ &NAMGFL
+ /
+ &NAMGRIB
+ /
+ &NAMGWD
+ /
+ &NAMGWDIAG
+ /
+ &NAMGWWMS
+ /
+ &NAMHCP
+ /
+ &NAMHLOPT
+ /
+ &NAMIAU
+ /
+ &NAMINI
+ /
+ &NAMINTFLEX
+ /
+ &NAMIOMI
+ /
+ &NAMIOS
+ /
+ &NAMJG
+ /
+ &NAMLCZ
+ /
+ &NAMMCC
+   N923=0,
+ /
+ &NAMMCUF
+ /
+ &NAMMTS
+ /
+ &NAMNUD
+ /
+ &NAMOOPS
+ /
+ &NAMOPH
+ /
+ &NAMPAR0
+   NPROC=1,
+ /
+ &NAMPAR1
+   LSPLIT=.FALSE.,
+ /
+ &NAMPARAR
+ /
+ &NAMPHY
+   LMPHYS=.TRUE.,
+   LSOLV=.TRUE.,
+   LVGSN=.TRUE.,
+ /
+ &NAMPHY0
+   GCVPSI=0.,
+ /
+ &NAMPHY1
+ /
+ &NAMPHY2
+ /
+ &NAMPHY3
+ /
+ &NAMPHYDS
+ /
+ &NAMPPC
+ /
+ &NAMPPVI
+ /
+ &NAMRCOEF
+ /
+ &NAMRES
+ /
+ &NAMRIP
+ /
+ &NAMRLX
+ /
+ &NAMRIP0
+ /
+ &NAMSATS
+ /
+ &NAMSCEN
+ /
+ &NAMSCM
+ /
+ &NAMSENS
+ /
+ &NAMSIMPHL
+ /
+ &NAMSPNG
+ /
+ &NAMSPSDT
+ /
+ &NAMSTA
+ /
+ &NAMSTOPH
+ /
+ &NAMTESTVAR
+ /
+ &NAMTOPH
+ /
+ &NAMTRAJP
+ /
+ &NAMTRANS
+ /
+ &NAMTRANS0
+ /
+ &NAMVAR
+ /
+ &NAMVAREPS
+ /
+ &NAMVDF
+ /
+ &NAMVDOZ
+ /
+ &NAMVRTL
+ /
+ &NAMVV0
+ /
+ &NAMVWRK
+ /
+ &NAMWAVELETJB
+ /
+ &NAMXFU
+ /
+ &NAM_DISTRIBUTED_VECTORS
+ /
+ &NAPHLC
+ /
+ &NEMBICU
+ /
+ &NEMCT0
+ /
+ &NEMDIM
+   NBZONG=8,
+   NBZONL=8,
+ /
+ &NEMDYN
+ /
+ &NEMELBC0A
+ /
+ &NEMELBC0B
+ /
+ &NEMGEO
+   ELON0=56,
+   ELAT0=44,
+   ELONC=56,
+   ELATC=44,
+   EDELX=10000.,
+   EDELY=10000.,
+ /
+FIN
+
+# replace NAMCLA and NAMDIM in nam923_1_1 by the ones from nam_quad
+cat nam923 | sed \
+	-e "s/ N923=0/ N923=1/" \
+	-e "s/ NMSMAX=107/ NMSMAX=71/" \
+	-e "s/ NSMAX=107/ NSMAX=71/" \
+	-e "s/ NLISSP=1/ NLISSP=0,LIPGD=.TRUE./" \
+	> nam923_1_1
+# replace N923 for the linear grid
+sed "s/ N923=0/ N923=1/" nam923 > nam923_1_2
+
+sed "s/ N923=0/ N923=2/" nam923 > nam923_2
+
+sed "s/ N923=0/ N923=3/" nam923 > nam923_3
+
+sed "s/ N923=0/ N923=4/" nam923 > nam923_4
+
+sed "s/ N923=0/ N923=5/" nam923 > nam923_5
+
+cat nam923 | sed \
+	-e "s/ LZ0THER=.FALSE./ LZ0THER=.FALSE.,NDATX=360,NDATY=180,RSTR=0./" \
+	> nam923_6
+
+sed "s/ N923=0/ N923=8/" nam923 > nam923_8
+
+sed "s/ N923=0/ N923=9/" nam923 > nam923_9
+
+rm nam_quad nam923
+
+
+#      ***********
+#      *  BINARY *
+#      ***********
+
+MASTER=/home/hamdi/aladin/pack/ref43t2/bin/MASTERODB
+#MASTER=/home/daand/aladin/pack/ref43t2/bin/MASTERO.DB
+MPIAUTO=mpiexec_mpt
+
+#      ************
+#      *  PART 1  *
+#      ************
+
+cp ${DATADIR}/923/RELIEF_G/GTOPT030/* .
+
+#------------------
+#  QUADRATIC part
+#------------------
+
+#   Copy the PGD file in local Neworog
+cp ${OUTDIR}/PGD_923.fa.aral_caspian12km Neworog
+
+mv nam923_1_1 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 1 quadratic "
+  exit
+fi
+
+mv Const.Clim Neworog
+
+#---------------
+#  LINEAR part
+#---------------
+
+mv nam923_1_2 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 1 linear "
+  exit
+fi
+
+rm fort.4 Neworog doc*
+rm  Water_Percentage Oro_M* Sigma Nb_Peaks Urbanisation Dh_*  Hmax-HxH-Hmin_ov4    
+ls -l
+
+
+#      ************
+#      *  PART 2  *
+#      ************
+
+path_2=${DATADIR}/923/SURFACE_G/version2/i3e
+cp ${path_2}/itp_GL   itp_GL
+cp ${path_2}/alb_GL   alb_GL
+cp ${path_2}/emi_GL   emi_GL
+cp ${path_2}/dps_GL   dps_GL
+cp ${path_2}/arg_GL   arg_GL
+cp ${path_2}/sab_GL   sab_GL
+cp ${path_2}/vgx_GL   vgx_GL
+cp ${path_2}/dpr_GL   dpr_GL
+
+mv nam923_2 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 2 "
+  exit
+fi
+
+rm fort.4 *_GL
+ls -l
+
+#      ************
+#      *  PART 3  *
+#      ************
+
+cp ${DATADIR}/923/N108/i3e/N108_GL  N108_GL
+for MM in $(seq -f%02g 1 1 12); do
+	cp  Const.Clim  Const.Clim.${MM}
+done
+
+mv nam923_3 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 3 "
+  exit
+fi
+
+rm fort.4 N108_GL
+ls -l
+
+
+#      *********************************************************
+#      *  PART 4 , 5 , 6 , 8 , 9 (for each of the 12 monthes)  *
+#      *********************************************************
+
+cp ${path_2}/z0v_GL  z0v_GL
+cp ${path_2}/alv_GL  alv_GL
+cp ${path_2}/rsm_GL  rsm_GL
+
+path_5=${DATADIR}/923/SURFACE_L/EUROPEb_v1/i3e
+cp ${path_5}/msk_HR  msk_HR
+cp ${path_5}/itp_HR  itp_HR
+cp ${path_5}/dpr_HR  dpr_HR
+cp ${path_5}/rsm_HR  rsm_HR
+cp ${path_5}/vgx_HR  vgx_HR
+cp ${path_5}/alv_HR  alv_HR
+cp ${path_5}/z0v_HR  z0v_HR
+
+path_6=${DATADIR}/923/CLIM_G/version2/i3e
+cp ${path_6}/rel_GL  rel_GL
+
+for MM in 01 02 03 04 05 06 07 08 09 10 11 12
+do
+mv  Const.Clim.${MM}  Const.Clim
+
+cp ${path_2}/veg${MM}_GL  veg_GL
+cp ${path_2}/lai${MM}_GL  lai_GL
+
+cp nam923_4 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 4 "
+  exit
+fi
+
+rm fort.4 veg_GL lai_GL
+
+
+cp ${path_5}/veg_${MM}_HR  veg_HR
+cp ${path_5}/lai_${MM}_HR  lai_HR
+
+cp nam923_5 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 5 "
+  exit
+fi
+
+rm fort.4 veg_HR lai_HR
+
+
+cp ${path_6}/tpl_${MM}_GL  tsl_GL
+cp ${path_6}/tpl_${MM}_GL  tpl_GL
+cp ${path_6}/wpl_${MM}_GL  wsl_GL
+cp ${path_6}/wpl_${MM}_GL  wpl_GL
+cp ${path_6}/snl_${MM}_GL  snl_GL
+
+cp nam923_6 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 6 "
+  exit
+fi
+
+rm fort.4 tsl_* tpl_* wsl_* wpl_* snl_*
+
+
+cp ${DATADIR}/923/CLIM_G/ozone/ascii/abc_quadra_${MM} abc_coef
+
+cp nam923_8 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+
+#cat NODE.001_01
+
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 8 "
+  exit
+else
+  echo "  OZONE OK "
+fi
+
+rm fort.4 abc_coef
+
+
+cp ${DATADIR}/923/CLIM_G/aerosols/ascii/aero.tegen.m${MM}_GL aero_GL
+
+cp nam923_9 fort.4
+
+time $MPIAUTO -np 1 $MASTER > log.out 2>log.err
+codrep=$?
+                                                                                                    
+#cat NODE.001_01
+                                                                                                    
+if [ $codrep -ne 0 ] ;then
+  echo "  >>>>>>>>>failed: part 9 "
+  exit
+else
+  echo "  aerosols OK "
+fi
+                                                                                                    
+rm fort.4 aero_GL
+
+mv Const.Clim Const.Clim.${MM}
+cp Const.Clim.${MM} clim_model_m${MM}
+
+done
+

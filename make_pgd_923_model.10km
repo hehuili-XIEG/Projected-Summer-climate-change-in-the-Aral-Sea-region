@@ -1,0 +1,130 @@
+#!/bin/bash
+#PBS
+#PBS -l walltime=00:30:00
+#PBS -l select=1:ncpus=1:mpiprocs=1
+#PBS -o /home/heheuili/log.clim.pbs -joe
+#PBS -N PGD
+
+# or launch an interactive job with
+#
+# 	qsub -I -lselect=1:ncpus=1:mpiprocs=1 -N PGD -lwalltime=02:00:00
+#
+
+#
+#   Building of the PGD for climatological files building for a model grid
+#
+#   This file has to be in FA format to be read by the 923 conf later.
+#
+
+BASEDIR=/home/hamdi/ALARO-1-SURFEX-8/PGD/CLIM
+source ${BASEDIR}/ENV_ALADIN
+
+WORKDIR=/scratch-a/heheuili/CLIM
+mkdir -p ${WORKDIR}
+rm -f ${WORKDIR}/*
+
+cd ${WORKDIR}
+
+echo ' -- PGD -- on a model grid for 923 '
+echo '     '
+
+#
+#     Databases searching
+#
+DIR_DATA=/home/daand/aladin/const/SFX_databases
+
+ln -s ${DIR_DATA}/CLAY_HWSD_MOY_v2.dir     clay.dir
+ln -s ${DIR_DATA}/CLAY_HWSD_MOY.hdr     clay.hdr
+ln -s ${DIR_DATA}/SAND_HWSD_MOY_v2.dir     sand.dir
+ln -s ${DIR_DATA}/SAND_HWSD_MOY.hdr     sand.hdr
+
+ln -s ${DIR_DATA}/ECOCLIMAP_I_GLOBAL_V1.6.dir    ecoclimap.dir
+ln -s ${DIR_DATA}/ECOCLIMAP_I_GLOBAL.hdr         ecoclimap.hdr
+
+
+#ln -s ${DIR_DATA}/gtopo30.dir   orog.dir
+#ln -s ${DIR_DATA}/gtopo30.hdr   orog.hdr
+
+#ln -s ${DIR_DATA}/GMTED2010_30.EHdr.dir   orog.dir
+#ln -s ${DIR_DATA}/GMTED2010_30.EHdr.hdr   orog.hdr
+
+#  !!! More precise orography databases available (better if resolution finer than 2km)
+ln -s ${DIR_DATA}/GMTED2010_075.EHdr.dir   orog.dir
+ln -s ${DIR_DATA}/GMTED2010_075.EHdr.hdr   orog.hdr
+
+#  necessary files to run surfex-pgd
+ln -s /home/daand/aladin/const/ecoclimap/V8.0/ecoclimapI_covers_param.bin       ecoclimapI_covers_param.bin
+ln -s /home/daand/aladin/const/ecoclimap/V8.0/ecoclimapII_eu_covers_param.bin   ecoclimapII_eu_covers_param.bin
+
+#
+#     Namelist
+#
+# example with ALADIN France
+
+cat << FIN > OPTIONS.nam
+ &NAM_IO_OFFLINE
+   CSURF_FILETYPE='FA    ',
+   CPGDFILE='PGD_923',
+   NHALO=100,
+ /
+ &NAM_PGD_GRID
+   CGRID='CONF PROJ ',
+ /
+ &NAM_CONF_PROJ
+   XLAT0=44.,
+   XLON0=56.,
+   XRPK=0.6946583704589973,
+   XBETA=0.00,
+ /
+ &NAM_CONF_PROJ_GRID
+   XLONCEN=56.,
+   XLATCEN=44.,
+   NIMAX=200,
+   NJMAX=200,
+   XDX=10000.,
+   XDY=10000.,
+ /
+ &NAM_FRAC
+   LECOCLIMAP=.TRUE.,
+ /
+ &NAM_COVER
+   YCOVER='ecoclimap',
+   YCOVERFILETYPE='DIRECT',
+ /
+ &NAM_ISBA
+   YCLAY='clay',
+   YCLAYFILETYPE='DIRECT',
+   YSAND='sand',
+   YSANDFILETYPE='DIRECT',
+ /
+ &NAM_ZS
+   YZS='orog',
+   YZSFILETYPE='DIRECT',
+ /
+ &NAM_ZS_FILTER
+   NZSFILTER=0,
+ /
+FIN
+
+
+cp /home/hamdi/aladin/pack/ref43t2/bin/PGD  pgd.exe
+
+#cp /home/hamdi/aladin/pack/cy36/bin/PGD.peng2 pgd.exe 
+
+time mpiexec_mpt -np 1 ./pgd.exe > log.out 2>log.err
+
+if [[ $? != 0 ]]; then
+	echo "PGD failed"
+	exit 1
+fi
+
+ls -l
+
+cat *LISTING*
+
+OUTDIR=/scratch-a/heheuili/CLIM/CLIMFILE/
+mkdir -p ${OUTDIR}
+cp PGD_923.fa  ${OUTDIR}/PGD_923.fa.aral_caspian10km
+
+
+
